@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">BiometricApplication</string>
+    <string name="dialog_title">Title</string>
+    <string name="dialog_subtitle">Subtitle</string>
+    <string name="dialog_description">Description</string>
+    <string name="dialog_negative_text">Cancel</string>
 </resources>
