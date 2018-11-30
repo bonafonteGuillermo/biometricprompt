@@ -3,12 +3,8 @@ package app.promtp.biometric.guillermo.example.com.biometriccompatmanager.finger
 import android.annotation.SuppressLint
 import android.app.KeyguardManager
 import android.content.Context
-import android.content.Context.FINGERPRINT_SERVICE
 import android.content.Context.KEYGUARD_SERVICE
-import android.hardware.biometrics.BiometricPrompt
-import android.hardware.fingerprint.FingerprintManager
 import android.os.Build
-
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
@@ -16,38 +12,31 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.hardware.fingerprint.FingerprintManagerCompat
 import androidx.core.os.CancellationSignal
-import java.io.IOException
-import java.security.*
-import java.security.cert.CertificateException
+import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
-import javax.crypto.NoSuchPaddingException
 import javax.crypto.SecretKey
-
 
 /**
  *
  * Created by Guillermo Bonafonte Criado on 29/11/2018.
  * 2018 © Cognizant Technology Solutions
  */
-class OldFingerprint(private val context: Context) : FingerprintBiometricParent, FingerprintManagerCompat.AuthenticationCallback() {
+class OldFingerprint(private val context: Context) : FingerprintBiometricParent, FingerprintManagerCompat.AuthenticationCallback(), CypherProvider {
 
+    override var cypherRequestor: CypherRequestor? = null
 
     private var KEY_NAME = "yourKey"
     private lateinit var cipher: Cipher
     private lateinit var keyStore: KeyStore
-    private lateinit var keyGenerator: KeyGenerator
-    private lateinit var cryptoObject: FingerprintManagerCompat.CryptoObject
-    private lateinit var fingerprintManager: FingerprintManagerCompat
-    private var keyguardManager: KeyguardManager? = null
-    private var cancellationSignal: CancellationSignal? = null
+    private val cryptoObject: FingerprintManagerCompat.CryptoObject by lazy { FingerprintManagerCompat.CryptoObject(cipher) }
+    private val keyGenerator: KeyGenerator by lazy { KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore") }
+    private val fingerprintManager: FingerprintManagerCompat by lazy { FingerprintManagerCompat.from(context) }
+    private val keyguardManager: KeyguardManager by lazy { context.getSystemService(KEYGUARD_SERVICE) as KeyguardManager } //TODO maybe not needed in order to check lockscreen security in your device's Settings
+    private val cancellationSignal: CancellationSignal by lazy { CancellationSignal() }
 
     @RequiresApi(Build.VERSION_CODES.M)
     override fun showFingerprintDialog(dialogTitle: String, dialogSubtitle: String, dialogDescription: String, dialogNegativeButton: String) {
-
-        keyguardManager = context.getSystemService(KEYGUARD_SERVICE) as KeyguardManager
-        fingerprintManager = context.getSystemService(FINGERPRINT_SERVICE) as FingerprintManagerCompat
-
         try {
             generateKey()
         } catch (e: FingerprintException) {
@@ -55,32 +44,24 @@ class OldFingerprint(private val context: Context) : FingerprintBiometricParent,
         }
 
         if (initCipher()) {
-            cryptoObject = FingerprintManagerCompat.CryptoObject(cipher)
             startAuth(fingerprintManager, cryptoObject)
         }
     }
 
     override fun onAuthenticationError(errMsgId: Int, errString: CharSequence?) {
-        super.onAuthenticationError(errMsgId, errString)
         Log.i("-->", "onAuthenticationError")
     }
 
-    override fun onAuthenticationSucceeded(result: FingerprintManagerCompat.AuthenticationResult?) {
-        super.onAuthenticationSucceeded(result)
+    override fun onAuthenticationSucceeded(result: FingerprintManagerCompat.AuthenticationResult) {
         Log.i("-->", "onAuthenticationSucceeded")
-    }
-
-    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        cypherRequestor?.invoke(result.cryptoObject.signature!!)
     }
 
     override fun onAuthenticationHelp(helpMsgId: Int, helpString: CharSequence?) {
-        super.onAuthenticationHelp(helpMsgId, helpString)
         Log.i("-->", "onAuthenticationHelp")
     }
 
     override fun onAuthenticationFailed() {
-        super.onAuthenticationFailed()
         Log.i("-->", "onAuthenticationFailed")
     }
 
@@ -90,8 +71,6 @@ class OldFingerprint(private val context: Context) : FingerprintBiometricParent,
         try {
 
             keyStore = KeyStore.getInstance("AndroidKeyStore")
-            keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-
             keyStore.load(null)
             keyGenerator.init(KeyGenParameterSpec.Builder(KEY_NAME,
                     KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
@@ -137,9 +116,13 @@ class OldFingerprint(private val context: Context) : FingerprintBiometricParent,
 
     @SuppressLint("MissingPermission")
     private fun startAuth(manager: FingerprintManagerCompat, cryptoObject: FingerprintManagerCompat.CryptoObject) {
-        cancellationSignal = CancellationSignal()
-        manager.authenticate(cryptoObject, 0,cancellationSignal, this, null)
+        manager.authenticate(cryptoObject, 0, cancellationSignal, this, null)
     }
 
     private inner class FingerprintException(e: Exception) : Exception(e)
+
+    override fun provideCypher(cypherRequestor: CypherRequestor) {
+        this.cypherRequestor = cypherRequestor
+        // Get cypher -> Show fingerprintpo up
+    }
 }

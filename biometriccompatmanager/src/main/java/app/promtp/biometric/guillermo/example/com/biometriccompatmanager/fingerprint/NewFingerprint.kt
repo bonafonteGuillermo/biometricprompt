@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.CancellationSignal
 import android.util.Log
 import androidx.annotation.RequiresApi
+import java.security.Signature
 
 /**
  *
@@ -15,7 +16,9 @@ import androidx.annotation.RequiresApi
  */
 
 @RequiresApi(Build.VERSION_CODES.P)
-class NewFingerprint(private val context: Context) : FingerprintBiometricParent, BiometricPrompt.AuthenticationCallback() {
+class NewFingerprint(private val context: Context) : FingerprintBiometricParent, BiometricPrompt.AuthenticationCallback(), CypherProvider {
+
+    override var cypherRequestor: CypherRequestor? = null
 
     @SuppressLint("MissingPermission")
     override fun showFingerprintDialog(dialogTitle: String, dialogSubtitle: String, dialogDescription: String, dialogNegativeButton: String) {
@@ -37,9 +40,9 @@ class NewFingerprint(private val context: Context) : FingerprintBiometricParent,
         Log.i("-->", "onAuthenticationError")
     }
 
-    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) {
-        super.onAuthenticationSucceeded(result)
+    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
         Log.i("-->", "onAuthenticationSucceeded")
+        cypherRequestor?.invoke(result.cryptoObject.signature)
     }
 
     override fun onAuthenticationHelp(helpCode: Int, helpString: CharSequence?) {
@@ -50,5 +53,10 @@ class NewFingerprint(private val context: Context) : FingerprintBiometricParent,
     override fun onAuthenticationFailed() {
         super.onAuthenticationFailed()
         Log.i("-->", "onAuthenticationFailed")
+    }
+
+    override fun provideCypher(cypherRequestor: CypherRequestor) {
+        this.cypherRequestor = cypherRequestor
+        // Get cypher -> Show fingerprintpo up
     }
 }

@@ -13,7 +13,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         img_fingerprint.setOnClickListener {
-            val biometricCompatManager = BiometricCompatManager(this, KeyProperties.PURPOSE_ENCRYPT)
+            val biometricCompatManager = BiometricCompatManager(this,1000)
             biometricCompatManager.authenticateFingerprint(
                     getString(R.string.dialog_title),
                     getString(R.string.dialog_subtitle),

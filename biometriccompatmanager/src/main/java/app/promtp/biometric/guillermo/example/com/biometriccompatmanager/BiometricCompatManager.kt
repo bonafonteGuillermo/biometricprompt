@@ -16,6 +16,6 @@ class BiometricCompatManager(private val context: Context, private var purpose: 
                                 dialogDescription: String,
                                 dialogNegativeButton: String) {
         val biometric = FingerprintFactory.create(context)
-        biometric.showFingerprintDialog(dialogTitle,dialogSubtitle,dialogDescription,dialogNegativeButton)
+        biometric?.showFingerprintDialog(dialogTitle,dialogSubtitle,dialogDescription,dialogNegativeButton)
     }
 }
